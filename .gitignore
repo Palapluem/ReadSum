@@ -1,0 +1,35 @@
+# === Go build files ===
+/bin/
+/build/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# === Go workspace ===
+/vendor/
+/coverage.out
+
+# === Environment files ===
+.env
+.env.*
+!.env.example   # allow example env file to be committed
+
+# === Logs & temporary files ===
+*.log
+*.tmp
+*.swp
+*.bak
+
+# === IDE / Editor folders ===
+.vscode/
+.idea/
+*.iml
+
+# === OS-specific files ===
+.DS_Store
+Thumbs.db
