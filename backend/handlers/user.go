@@ -26,8 +26,6 @@ type UserResponse struct {
 }
 
 func Register(c *fiber.Ctx) error {
-	
-
 	var input RegisterInput
 
 	if err := c.BodyParser(&input); err != nil {
@@ -110,5 +108,29 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"token": token})
+}
 
+func GetUser(c *fiber.Ctx) error {
+	UID, ok := c.Locals("userID").(uint)
+	if !ok || UID == 0 {
+		return customerrors.NewUnauthorizedError("Authentication token is invalid or missing user ID.")
+	}
+	var user models.User
+
+	result := config.DB.First(&user, UID)
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return customerrors.NewNotFoundError("User not found")
+		}else {
+			return customerrors.NewInternalServerError("Database query failed")
+		}
+	}
+
+	response := UserResponse{
+		Name: user.Name,
+		Email: user.Email,
+	}
+
+	return c.Status(200).JSON(response)
 }
