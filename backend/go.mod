@@ -1,4 +1,4 @@
-module backend
+module github.com/MadMax168/Readsum
 
 go 1.24.2
 

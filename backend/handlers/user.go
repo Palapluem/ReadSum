@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"backend/config"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -12,7 +11,7 @@ func GetMe(c *fiber.Ctx) error {
 		return c.SendStatus(401)
 	}
 
-	var user models.user
+	var user 
 	result := config.DB.First(&user, UID)
 	if result.Error != nil {
 		return c.SendStatus(404)
