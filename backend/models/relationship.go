@@ -9,4 +9,5 @@ type Relationship struct {
 
 	Docs1 uint
 	Docs2 uint
+	Docs  Docs
 }

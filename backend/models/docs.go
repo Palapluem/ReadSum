@@ -10,8 +10,11 @@ type Docs struct {
 	Summary   string `json:"summary"`
 	Status    string `json:"status"`
 	UserID    uint
+	User      User
 	ChatID    uint
+	Chat      Chat
 	MessageID uint
+	Message   Message
 
 	Connect []Relationship
 }

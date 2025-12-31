@@ -7,5 +7,7 @@ type Message struct {
 	Text     string `json:"text"`
 	Response string `json:"responsse"`
 	UserID   uint
+	User     User
 	ChatID   uint
+	Chat     Chat
 }
