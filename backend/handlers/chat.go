@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type resp struct {
+type ChatResp struct {
 	Index uint   `json:"index"`
 	Title string `json:"title"`
 }
@@ -27,9 +27,9 @@ func GetChat(c *fiber.Ctx) error {
 		return customerrors.NewInternalServerError("Database error")
 	}
 
-	var response []resp
+	var response []ChatResp
 	for _, i := range cxs {
-		response = append(response, resp{
+		response = append(response, ChatResp{
 			Index: i.ID,
 			Title: i.Title,
 		})

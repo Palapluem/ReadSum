@@ -122,7 +122,7 @@ func Login(c *fiber.Ctx) error {
 func GetUser(c *fiber.Ctx) error {
 	UID, ok := c.Locals("userID").(uint)
 	if !ok || UID == 0 {
-		return customerrors.NewUnauthorizedError("Authentication token is invalid or missing user ID.")
+		return customerrors.NewUnauthorizedError("Authentication required")
 	}
 	var user models.User
 

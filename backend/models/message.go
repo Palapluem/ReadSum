@@ -25,7 +25,6 @@ func (u *UintArray) Scan(value interface{}) error {
 type Message struct {
 	gorm.Model
 	Text               string    `json:"text" gorm:"type:text;not null"`
-	Response           string    `json:"responsse" gorm:"type:text"`
 	Role               string    `json:"role" gorm:"type:varchar(20);not null"`
 	RelatedDocumentIDs UintArray `json:"related_document_idx" gorm:"type:json"`
 	//ForeignKeys
