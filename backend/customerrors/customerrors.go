@@ -2,6 +2,8 @@ package customerrors
 
 import (
 	"fmt"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 type CustomError struct {
@@ -17,45 +19,53 @@ func (e *CustomError) GetCode() int {
 	return e.Code
 }
 
-//Error
+func (e *CustomError) ToFiberResponse(c *fiber.Ctx) error {
+	return c.Status(e.Code).JSON(fiber.Map{
+		"success": false,
+		"error":   e.Message,
+		"code":    e.Code,
+	})
+}
+
+// Error
 func NewBadRequestError(message string) *CustomError {
 	return &CustomError{
-		Code: 400,
+		Code:    400,
 		Message: message,
 	}
 }
 
 func NewUnauthorizedError(message string) *CustomError {
 	return &CustomError{
-		Code: 401,
+		Code:    401,
 		Message: message,
 	}
 }
 
 func NewForbiddenError(message string) *CustomError {
 	return &CustomError{
-		Code: 403,
+		Code:    403,
 		Message: message,
 	}
 }
 
 func NewNotFoundError(message string) *CustomError {
 	return &CustomError{
-		Code: 404,
+		Code:    404,
 		Message: message,
 	}
 }
 
 func NewConflictError(message string) *CustomError {
 	return &CustomError{
-		Code: 409,
+		Code:    409,
 		Message: message,
 	}
 }
 
 func NewInternalServerError(message string) *CustomError {
 	return &CustomError{
-		Code: 500,
+		Code:    500,
 		Message: message,
 	}
 }

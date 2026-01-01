@@ -57,9 +57,9 @@ func Register(c *fiber.Ctx) error {
 	}
 
 	user := models.User{
-		Name:     input.Name,
-		Email:    input.Email,
-		Password: string(hashedPassword),
+		Name:         input.Name,
+		Email:        input.Email,
+		PasswordHash: string(hashedPassword),
 	}
 
 	if err := config.DB.Create(&user).Error; err != nil {
@@ -82,7 +82,6 @@ type LoginInput struct {
 }
 
 func Login(c *fiber.Ctx) error {
-
 	var input LoginInput
 
 	if err := c.BodyParser(&input); err != nil {
@@ -91,13 +90,14 @@ func Login(c *fiber.Ctx) error {
 
 	input.Email = strings.TrimSpace(strings.ToLower(input.Email))
 	var user models.User
-	config.DB.Where("email = ?", input.Email).First(&user)
-
-	if user.ID == 0 {
-		return customerrors.NewNotFoundError("User not found")
+	if err := config.DB.Where("email = ?", input.Email).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return customerrors.NewUnauthorizedError("Invalid email or password")
+		}
+		return customerrors.NewInternalServerError("Database error")
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
 		return customerrors.NewConflictError("Incorrect password")
 	}
 
@@ -106,7 +106,17 @@ func Login(c *fiber.Ctx) error {
 		return customerrors.NewInternalServerError("Failed to generate token")
 	}
 
-	return c.JSON(fiber.Map{"token": token})
+	return c.Status(200).JSON(fiber.Map{
+		"success": true,
+		"data": fiber.Map{
+			"token": token,
+			"user": UserResponse{
+				Name:  user.Name,
+				Email: user.Email,
+			},
+		},
+		"message": "Login successful",
+	})
 }
 
 func GetUser(c *fiber.Ctx) error {
@@ -168,7 +178,7 @@ func UpdPass(c *fiber.Ctx) error {
 		return customerrors.NewInternalServerError("Database error during user fetch")
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.OldPassword)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.OldPassword)); err != nil {
 		return customerrors.NewUnauthorizedError("Invalid password")
 	}
 
@@ -177,8 +187,8 @@ func UpdPass(c *fiber.Ctx) error {
 		return customerrors.NewInternalServerError("Failed to process new password hash")
 	}
 
-	if err := config.DB.Model(&user).Update("Password", string(hashedPassword)).Error; err != nil {
-		return customerrors.NewInternalServerError("Failed to save new password to database")
+	if err := config.DB.Model(&user).Update("PasswordHash", string(hashedPassword)).Error; err != nil {
+		return customerrors.NewInternalServerError("Failed to save new password")
 	}
 
 	return c.Status(200).JSON(fiber.Map{

@@ -1,10 +1,14 @@
 package handlers
 
 import (
+	"errors"
+	"strings"
+
 	"github.com/MadMax168/Readsum/config"
 	"github.com/MadMax168/Readsum/customerrors"
 	"github.com/MadMax168/Readsum/models"
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
 type resp struct {
@@ -15,12 +19,12 @@ type resp struct {
 func GetChat(c *fiber.Ctx) error {
 	UID, ok := c.Locals("userID").(uint)
 	if !ok || UID == 0 {
-		return customerrors.NewUnauthorizedError("Authentication token is invalid or missing user ID.")
+		return customerrors.NewUnauthorizedError("Authentication required")
 	}
 
 	var cxs []models.Chat
 	if err := config.DB.Where("user_id = ?", UID).Find(&cxs).Error; err != nil {
-		return customerrors.NewInternalServerError("Not found any chat in sever")
+		return customerrors.NewInternalServerError("Database error")
 	}
 
 	var response []resp
@@ -34,7 +38,12 @@ func GetChat(c *fiber.Ctx) error {
 	return c.Status(200).JSON(fiber.Map{
 		"success": true,
 		"data":    response,
+		"message": "Chats retrieved successfully",
 	})
+}
+
+type CreateChatInput struct {
+	Title string `json:"title"`
 }
 
 func Create(c *fiber.Ctx) error {
@@ -43,47 +52,92 @@ func Create(c *fiber.Ctx) error {
 		return customerrors.NewUnauthorizedError("Authentication token is invalid or missing user ID.")
 	}
 
-	chat := new(models.Chat)
-	if err := c.BodyParser(&chat); err != nil {
-		return c.Status(400).SendString(err.Error())
+	var input CreateChatInput
+	if err := c.BodyParser(&input); err != nil {
+		return customerrors.NewBadRequestError("Invalid request body")
 	}
 
-	chat.UserID = UID
-	config.DB.Create(&chat)
-	return c.Status(200).JSON(chat)
+	input.Title = strings.TrimSpace(input.Title)
+	if input.Title == "" {
+		return customerrors.NewBadRequestError("Chat title is required")
+	}
+
+	chat := models.Chat{
+		Title:  input.Title,
+		UserID: UID,
+	}
+
+	if err := config.DB.Create(&chat).Error; err != nil {
+		return customerrors.NewInternalServerError("Failed to create chat")
+	}
+
+	return c.Status(201).JSON(fiber.Map{
+		"success": true,
+		"data":    chat,
+		"message": "Chat created successfully",
+	})
+}
+
+type UpdateChatInput struct {
+	Title string `json:"title"`
 }
 
 func UpdChat(c *fiber.Ctx) error {
-	cx := new(models.Chat)
-
 	UID, ok := c.Locals("userID").(uint)
 	if !ok || UID == 0 {
-		return customerrors.NewUnauthorizedError("Authentication token is invalid or missing user ID.")
+		return customerrors.NewUnauthorizedError("Authentication required")
 	}
 
 	CID := c.Params("chatID")
-	if err := c.BodyParser(cx); err != nil {
-		return customerrors.NewBadRequestError("Can not find this chat")
+
+	var input UpdateChatInput
+	if err := c.BodyParser(&input); err != nil {
+		return customerrors.NewBadRequestError("Invalid request body")
 	}
 
-	config.DB.Where("userID = ? and id = ?", UID, CID).Updates(&cx)
-	return c.Status(200).JSON(cx)
+	var chat models.Chat
+	result := config.DB.Where("user_id = ? AND id = ?", UID, CID).First(&chat)
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return customerrors.NewNotFoundError("Chat not found")
+		}
+		return customerrors.NewInternalServerError("Database error")
+	}
+
+	if err := config.DB.Model(&chat).Update("title", input.Title).Error; err != nil {
+		return customerrors.NewInternalServerError("Failed to update chat")
+	}
+
+	config.DB.First(&chat, CID)
+	return c.Status(200).JSON(fiber.Map{
+		"success": true,
+		"data":    chat,
+		"message": "Chat updated successfully",
+	})
 }
 
 func DelChat(c *fiber.Ctx) error {
-	CID := c.Params("chatID")
-	var cx models.Chat
-
 	UID, ok := c.Locals("userID").(uint)
-	if !ok {
-		return c.SendStatus(401)
+	if !ok || UID == 0 {
+		return customerrors.NewUnauthorizedError("Authentication required")
 	}
 
-	result := config.DB.Where("user_id = ? AND id = ?", UID, CID).Delete(&cx)
+	CID := c.Params("chatID")
+
+	var chat models.Chat
+	result := config.DB.Where("user_id = ? AND id = ?", UID, CID).Delete(&chat)
+
+	if result.Error != nil {
+		return customerrors.NewInternalServerError("Failed to delete chat")
+	}
 
 	if result.RowsAffected == 0 {
-		return c.SendStatus(404)
+		return customerrors.NewNotFoundError("Chat not found")
 	}
 
-	return c.Status(200).SendString("Deleted Success!!")
+	return c.Status(200).JSON(fiber.Map{
+		"success": true,
+		"message": "Chat deleted successfully",
+	})
 }
