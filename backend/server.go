@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/MadMax168/Readsum/config"
+	"github.com/MadMax168/Readsum/models"
 	"github.com/MadMax168/Readsum/routes"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -22,7 +23,11 @@ func main() {
 	config.ConnectDB()
 
 	config.DB.AutoMigrate(
-	//models
+		&models.User{},
+		&models.Chat{},
+		&models.Message{},
+		&models.Document{},
+		&models.Relationship{},
 	)
 
 	app := fiber.New()

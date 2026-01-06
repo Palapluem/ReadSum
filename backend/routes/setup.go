@@ -28,7 +28,8 @@ func SetAllRoutes(app *fiber.App) {
 	chats.Delete("/:chatID", handlers.DelChat)
 
 	// Message Routes (Nested under chat)
-	messages := chats.Group("/:chatID/messages")
+	// Add ChatIDMiddleware to extract chatID from URL
+	messages := chats.Group("/:chatID/messages", middleware.ChatIDMiddleware)
 	messages.Get("/", handlers.GetMessage)
 	messages.Post("/", handlers.PostMessage)
 	messages.Patch("/:messageID", handlers.UpdMessage)

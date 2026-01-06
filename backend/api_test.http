@@ -24,8 +24,8 @@ Content-Type: application/json
 
 ### ==========================================
 ### ⚠️ ตั้งค่า Token และ Chat ID ตรงนี้ก่อนไปต่อ
-@token = YOUR_TOKEN_HERE
-@chatId = YOUR_CHAT_ID_HERE
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzAzMDUxMzQsInVzZXJfaWQiOjF9.yxdVGde--pT-0Ei5lyFL_ZCwh9r-QHWLwhAj-OHQfZI
+@chatId = 10
 ### ==========================================
 
 
@@ -51,11 +51,15 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-    "text": "สวัสดี Gemini ช่วยเล่าเรื่องตลกให้ฟังหน่อยสิ",
+    "text": "Gemini ตอนนี้กี๋โมงแล้ว",
     "role": "user"
 }
 
 
-### 6. Get Chats (ดูประวัติแชททั้งหมด)
+### 6. Get Chat Rooms (ดูรายชื่อห้องแชททั้งหมด)
+GET {{baseUrl}}/api/v1/chats
+Authorization: Bearer {{token}}
+
+### 7. Get Messages in Chat (ดูข้อความในห้องแชทที่เลือก)
 GET {{baseUrl}}/api/v1/chats/{{chatId}}/messages
 Authorization: Bearer {{token}}
