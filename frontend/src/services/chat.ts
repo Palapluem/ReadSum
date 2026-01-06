@@ -16,21 +16,65 @@ export const chatService = {
 
   // Get messages for a specific chat
   async getMessages(chatId: number) {
-    const response = await api.get<{ messages: Request[] }>(`/api/v1/chats/${chatId}/messages/`);
-    // API might return "messages" or just the array. Adjust based on backend response.
-    // Looking at go handler previously, it usually returns JSON with a key.
-    return response.data.messages;
+    const response = await api.get<{ data: { index: number; role: string; text: string; created_at: string }[] }>(`/api/v1/chats/${chatId}/messages/`);
+    
+    // Transform flat list (User, Assistant) into Paired Requests (Request, Response)
+    const flatMessages = response.data.data || [];
+    const paired: Request[] = [];
+    
+    let currentPair: any = null;
+    
+    flatMessages.forEach(msg => {
+        if (msg.role === 'user') {
+            if (currentPair) paired.push(currentPair); // Push previous pair
+            currentPair = {
+                id: msg.index,
+                request: msg.text,
+                response: '',
+                chat_id: chatId,
+                CreatedAt: msg.created_at
+            };
+        } else if (msg.role === 'assistant') {
+            if (currentPair) {
+                currentPair.response = msg.text;
+                paired.push(currentPair);
+                currentPair = null;
+            } else {
+                 // Standalone assistant message (shouldn't happen often, but handle it)
+                 paired.push({
+                    id: msg.index,
+                    request: '',
+                    response: msg.text,
+                    chat_id: chatId,
+                    CreatedAt: msg.created_at
+                 });
+            }
+        }
+    });
+    
+    if (currentPair) paired.push(currentPair); // Push last pending
+    
+    return paired;
   },
 
   // Send a message
   async sendMessage(chatId: number, content: string) {
-    // The backend expects json like { "request": "hello" }
-    const response = await api.post<{ response: string; request: Request }>(`/api/v1/chats/${chatId}/messages/`, { request: content });
+    // Backend expects { text: "...", role: "user" }
+    const response = await api.post<{ success: boolean; data: any }>(`/api/v1/chats/${chatId}/messages/`, { 
+        text: content,
+        role: "user"
+    });
     return response.data;
   },
 
   // Delete a chat
   async deleteChat(chatId: number) {
     await api.delete(`/api/v1/chats/${chatId}`);
+  },
+
+  // Update chat topic
+  async updateChat(chatId: number, topic: string) {
+    const response = await api.patch<{ success: boolean; data: Chat }>(`/api/v1/chats/${chatId}`, { title: topic });
+    return response.data.data;
   }
 };

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { chatService } from '@/services/chat';
 import { Chat, Request } from '@/types/chat';
-import { Send, Plus, MessageSquare, Trash2, Menu, X, Bot, User } from 'lucide-react';
+import { Send, Plus, MessageSquare, Trash2, Menu, X, Bot, User, Search, Edit, LayoutGrid, ChevronRight, Settings, HelpCircle, MoreVertical, FileText, Zap, Sparkles, Layers } from 'lucide-react';
 import { SpotlightCard } from '@/components/ui/SpotlightCard';
 
 export default function ChatPage() {
@@ -195,6 +195,22 @@ export default function ChatPage() {
     
     setMessages(prev => [...prev, tempMessage]);
 
+    const activeChat = chats.find(c => c.id === activeChatId);
+    let newTopic = '';
+    
+    // Auto-rename chat if it says "New Conversation" OR "New Chat" OR if we can't find it (created in this flow)
+    const isNew = !activeChat || activeChat.topic === 'New Conversation' || activeChat.topic === 'New Chat';
+    
+    if (isNew) {
+          // Generate topic from the first ~30 chars
+        newTopic = content.substring(0, 30) + (content.length > 30 ? '...' : '');
+        
+        // Optimistic update
+        setChats(prev => prev.map(c => 
+            c.id === activeChatId ? { ...c, topic: newTopic } : c
+        ));
+    }
+
     const token = localStorage.getItem('token');
     if (!token) {
         // Preview Mode: Simulate AI response
@@ -212,9 +228,12 @@ export default function ChatPage() {
 
     try {
       // Send to backend
-      await chatService.sendMessage(activeChatId, content);
+      const [sendResult, updateResult] = await Promise.all([
+          chatService.sendMessage(activeChatId, content),
+          newTopic ? chatService.updateChat(activeChatId, newTopic) : Promise.resolve(null)
+      ]);
       
-      // Refresh messages to get the AI response and proper DB IDs
+      // Refresh messages to get the AI response/proper DB IDs
       await fetchMessages(activeChatId);
     } catch (error) {
       console.error('Failed to send message', error);
@@ -224,6 +243,28 @@ export default function ChatPage() {
     }
   };
 
+  const handleSuggestionClick = async (prompt: string) => {
+      // Logic:
+      // 1. If we have a current chat (currentChatId), send message there.
+      // 2. If no current chat, create one, then send message.
+      
+      let targetChatId = currentChatId;
+
+      if (!targetChatId) {
+          setLoading(true); // Show loading immediately
+          const newId = await handleCreateChat();
+          if (newId) {
+              targetChatId = newId;
+          } else {
+              setLoading(false);
+              return; // Failed to create chat
+          }
+      }
+      
+      // Send the prompt as a message
+      handleSendMessage(null, prompt, targetChatId);
+  };
+  
   return (
     <div className="flex h-screen bg-[#050505] text-white overflow-hidden">
         {/* Mobile Sidebar overlay */}
@@ -236,155 +277,206 @@ export default function ChatPage() {
 
       {/* Sidebar */}
       <div className={`
-        fixed inset-y-0 left-0 z-30 w-72 transform border-r border-white/10 bg-[#0a0a0a] transition-transform duration-300 ease-in-out md:relative md:translate-x-0
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div className="flex h-full flex-col">
-          <div className="p-4">
-            <button
-              onClick={handleCreateChat}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-white/10 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-white/20 hover:text-green-400"
-            >
-              <Plus className="h-5 w-5" />
-              New Chat
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto px-2 py-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-            {chats.length === 0 ? (
-                <div className="text-center text-sm text-zinc-500 mt-10">No chats yet.</div>
-            ) : (
-                <div className="space-y-1">
-                {chats.map((chat) => (
-                    <div
-                    key={chat.id}
-                    onClick={() => {
-                        setCurrentChatId(chat.id);
-                        if (window.innerWidth < 768) setSidebarOpen(false);
-                    }}
-                    className={`group relative flex cursor-pointer items-center justify-between rounded-lg px-3 py-3 text-sm transition-colors ${
-                        currentChatId === chat.id
-                        ? 'bg-white/10 text-white'
-                        : 'text-zinc-400 hover:bg-white/5 hover:text-white'
-                    }`}
-                    >
-                    <div className="flex items-center gap-3 overflow-hidden">
-                        <MessageSquare className="h-4 w-4 flex-shrink-0" />
-                        <span className="truncate">{chat.topic || `Chat ${chat.id}`}</span>
-                    </div>
-                    
-                    <button
-                        onClick={(e) => handleDeleteChat(e, chat.id)}
-                        className="opacity-0 transition-opacity group-hover:opacity-100 p-1 hover:text-red-400"
-                    >
-                        <Trash2 className="h-3.5 w-3.5" />
+        fixed inset-y-0 left-0 z-30 w-72 transform border-r border-white/10 bg-[#0b0b0b] ease-smooth md:relative md:translate-x-0
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:!w-0 md:!border-r-0 md:!overflow-hidden'}
+      `}
+      style={{
+          transitionDuration: '400ms'
+      }}
+      >
+         <div className="flex h-full flex-col">
+            {/* Top Bar: New Chat & Search */}
+            <div className="px-4 pt-6 pb-2 flex items-center justify-between">
+                <button 
+                    onClick={handleCreateChat}
+                    className="flex items-center gap-2 rounded-full bg-[#1e1e1e] px-4 py-2.5 text-sm transition-all hover:bg-[#2c2c2c] active:scale-95 text-zinc-200"
+                >
+                    <Plus className="h-4 w-4" />
+                    <span className="font-medium mr-1">New Chat</span>
+                </button>
+                
+                <div className="flex items-center">
+                    <button className="p-2 rounded-full hover:bg-white/10 transition-colors text-zinc-400">
+                        <Search className="h-5 w-5" />
                     </button>
-                    </div>
-                ))}
+                    <button className="p-2 rounded-full hover:bg-white/10 transition-colors text-zinc-400 md:hidden" onClick={() => setSidebarOpen(false)}>
+                        <X className="h-5 w-5" />
+                    </button>
                 </div>
-            )}
-            
-          </div>
+            </div>
 
-          <div className="border-t border-white/10 p-4">
-             {/* User profile or settings could go here */}
-             <div className="flex items-center gap-3 text-sm text-zinc-400">
-                <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-500 to-blue-500"></div>
-                <span>User Account</span>
-             </div>
-          </div>
+            <div className="flex-1 overflow-y-auto px-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                
+                {/* My Information Section */}
+                <div className="mt-6 mb-2">
+                    <div className="flex items-center justify-between px-3 py-2 text-sm font-medium text-zinc-200 hover:bg-white/5 rounded-lg cursor-pointer group">
+                        <span>My Information</span>
+                        <ChevronRight className="h-4 w-4 text-zinc-500 group-hover:text-zinc-300" />
+                    </div>
+                   
+                    {/* Thumbnails Scroller - Hidden in this 'Real' version to declutter as requested */}
+                    {/*
+                    <div className="flex gap-2 overflow-x-auto px-3 py-2 pb-4 scrollbar-none mask-linear-fade">
+                        ...
+                    </div>
+                    */}
+                </div>
+
+                {/* Gem Section - REMOVED for clean 'ReadSum' focus */}
+
+                {/* Chats List Section */}
+                <div className="mt-2">
+                    <div className="px-3 py-2 text-xs font-medium text-zinc-500">Recent Chats</div>
+                    <div className="space-y-0.5">
+                    {chats.map((chat) => (
+                        <div
+                        key={chat.id}
+                        onClick={() => {
+                            setCurrentChatId(chat.id);
+                            if (window.innerWidth < 768) setSidebarOpen(false);
+                        }}
+                        className={`group relative flex cursor-pointer items-center justify-between rounded-full px-4 py-2.5 text-sm transition-all duration-200 ${
+                            currentChatId === chat.id
+                            ? 'bg-[#1e1e1e] text-white font-medium'
+                            : 'text-zinc-400 hover:bg-[#1e1e1e]/50 hover:text-zinc-200'
+                        }`}
+                        >
+                        <span className="truncate pr-8">{chat.topic || `Chat ${chat.id}`}</span>
+                        
+                        {/* More Options / Delete */}
+                        <div className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center z-10">
+                            <button
+                                onClick={(e) => handleDeleteChat(e, chat.id)}
+                                className="p-1.5 hover:bg-zinc-700/50 rounded-full text-zinc-500 hover:text-red-400 transition-colors"
+                            >
+                                <MoreVertical className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
+                        </div>
+                    ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Bottom: Settings */}
+            <div className="p-3 mt-auto border-t border-white/5">
+                <button className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-zinc-400 hover:bg-white/5 hover:text-white transition-colors">
+                    <Settings className="h-5 w-5" />
+                    <span>Settings & Help</span>
+                </button>
+            </div>
         </div>
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex flex-1 flex-col h-full relative">
+      <div className="flex flex-1 flex-col h-full relative transition-all duration-400 ease-smooth">
         {/* Header */}
-        <header className="flex h-16 items-center justify-between border-b border-white/10 bg-[#050505]/80 px-4 backdrop-blur-md sticky top-0 z-10">
+        <header className="flex h-16 items-center justify-between px-4 sticky top-0 z-10 w-full mb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden text-zinc-400 hover:text-white"
+              className="rounded-full p-2 text-zinc-400 hover:bg-white/10 hover:text-white transition-colors"
             >
-              <Menu className="h-6 w-6" />
+              <Menu className="h-5 w-5" />
             </button>
-            <h1 className="text-lg font-semibold">
-                {chats.find(c => c.id === currentChatId)?.topic || (currentChatId ? 'Chat' : 'ReadSum AI')}
-            </h1>
+            <span className="text-lg font-medium text-zinc-200">ReadSum</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="bg-[#1e1e1e] flex items-center px-3 py-1.5 rounded-full border border-white/5">
+                <span className="text-xs font-medium text-zinc-300">PRO</span>
+            </div>
+             <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-purple-500 to-blue-500 ring-2 ring-white/10"></div>
           </div>
         </header>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-          {!currentChatId ? (
-            <div className="flex h-full flex-col items-center justify-center space-y-8 animate-fade-in">
-              <div className="text-center space-y-4">
-                <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-green-400 bg-clip-text text-transparent animate-slide-down">
-                    Hello, Learner
-                </h2>
-                <p className="text-2xl text-zinc-400 font-light animate-slide-up delay-100">How can I help you learn today?</p>
-              </div>
+        {/* Chat Content or Home Greeting */}
+        <div className="flex-1 overflow-hidden relative">
+          
+          {/* 1. HOME GREETING VIEW (Show if no messages yet) */}
+          {messages.length === 0 ? (
+             <div className="h-full flex flex-col items-center justify-center p-4 animate-fade-in">
+                {/* Greeting */}
+                <div className="mb-12 text-left w-full max-w-3xl">
+                    <h1 className="text-5xl font-medium tracking-tight bg-gradient-to-r from-blue-400 via-purple-400 to-red-400 bg-clip-text text-transparent mb-2">
+                        Hello, Wisit
+                    </h1>
+                    <h2 className="text-5xl font-medium text-zinc-500 tracking-tight">
+                        Where shall we start?
+                    </h2>
+                </div>
 
-              {/* Suggestions Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl px-4 animate-slide-up delay-200">
-                 <SpotlightCard 
-                  onClick={async () => {
-                        const newChatId = await handleCreateChat();
-                        if (newChatId) {
-                           handleSendMessage({ preventDefault: () => {} } as any, "Summarize this article about Quantum Computing", newChatId);
-                        }
-                  }}
-                  className="p-4"
-                  spotlightColor="rgba(168, 85, 247, 0.2)"
-                 >
-                    <span className="block text-white font-medium group-hover:text-purple-400 transition-colors">Summarize Article</span>
-                    <span className="block text-sm text-zinc-500">Paste a link or text to get a quick summary</span>
-                 </SpotlightCard >
-                 
-                 <SpotlightCard 
-                   onClick={async () => {
-                        const newChatId = await handleCreateChat();
-                        if (newChatId) {
-                            handleSendMessage({ preventDefault: () => {} } as any, "Explain the concept of Recursion in programming", newChatId);
-                        }
-                   }}
-                   className="p-4"
-                   spotlightColor="rgba(59, 130, 246, 0.2)"
-                 >
-                    <span className="block text-white font-medium group-hover:text-blue-400 transition-colors">Explain Concept</span>
-                    <span className="block text-sm text-zinc-500">Get clear explanations for complex topics</span>
-                 </SpotlightCard>
+                {/* Input Area (Centered) */}
+                <div className="w-full max-w-3xl mb-8 relative z-20">
+                     <div className="bg-[#1e1e1e] rounded-[2rem] p-4 pr-6 transition-all hover:bg-[#252525] group border border-transparent focus-within:border-white/10 focus-within:bg-[#252525]">
+                         <form
+                            onSubmit={(e) => handleSendMessage(e)}
+                            className="flex flex-col gap-3"
+                          >
+                           <input
+                             type="text"
+                             value={inputValue}
+                             onChange={(e) => setInputValue(e.target.value)}
+                             placeholder="Ask ReadSum to summarize, explain, or generate quiz..."
+                             className="bg-transparent border-none outline-none text-lg text-white w-full px-4 placeholder:text-zinc-500"
+                           />
+                           <div className="flex items-center justify-between px-2">
+                              <div className="flex gap-2">
+                                  <button type="button" className="p-2 rounded-full hover:bg-white/10 text-zinc-400 transition-colors">
+                                      <Plus className="h-5 w-5" />
+                                  </button>
+                                  <button type="button" className="p-2 rounded-full hover:bg-white/10 text-zinc-400 transition-colors">
+                                      <LayoutGrid className="h-5 w-5" />
+                                  </button>
+                              </div>
+                              <button 
+                                type="submit"
+                                disabled={!inputValue.trim()}
+                                className="p-2 rounded-full bg-white text-black hover:bg-zinc-200 disabled:opacity-50 disabled:bg-transparent disabled:text-zinc-500 transition-all font-medium"
+                              >
+                                  {inputValue.trim() ? <Send className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
+                              </button>
+                           </div>
+                         </form>
+                     </div>
+                </div>
 
-                 <SpotlightCard 
-                   onClick={async () => {
-                        const newChatId = await handleCreateChat();
-                        if (newChatId) {
-                            handleSendMessage({ preventDefault: () => {} } as any, "Create a study plan for learning Python", newChatId);
-                        }
-                   }}
-                   className="p-4"
-                   spotlightColor="rgba(34, 197, 94, 0.2)"
-                 >
-                    <span className="block text-white font-medium group-hover:text-green-400 transition-colors">Study Plan</span>
-                    <span className="block text-sm text-zinc-500">Generate a structured learning path</span>
-                 </SpotlightCard>
-
-                 <SpotlightCard 
-                   onClick={async () => {
-                        const newChatId = await handleCreateChat();
-                        if (newChatId) {
-                            handleSendMessage({ preventDefault: () => {} } as any, "Quiz me on World History basics", newChatId);
-                        }
-                   }}
-                   className="p-4"
-                   spotlightColor="rgba(234, 179, 8, 0.2)"
-                 >
-                    <span className="block text-white font-medium group-hover:text-yellow-400 transition-colors">Quiz Me</span>
-                    <span className="block text-sm text-zinc-500">Test your knowledge with interactive quizzes</span>
-                 </SpotlightCard>
-              </div>
-            </div>
+                {/* Chip Suggestions */}
+                <div className="flex flex-wrap gap-2 justify-center max-w-3xl animate-slide-up" style={{ animationDelay: '100ms' }}>
+                    <button 
+                        onClick={() => handleSuggestionClick("Summarize the key points from the document.")}
+                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#1e1e1e] hover:bg-[#2c2c2c] border border-white/5 transition-all text-sm text-zinc-300 hover:scale-105 active:scale-95"
+                    >
+                        <FileText className="h-4 w-4 text-purple-400" />
+                        <span>Summarize PDF</span>
+                    </button>
+                    <button 
+                        onClick={() => handleSuggestionClick("Generate a 10-question multiple choice quiz about the last topic.")}
+                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#1e1e1e] hover:bg-[#2c2c2c] border border-white/5 transition-all text-sm text-zinc-300 hover:scale-105 active:scale-95"
+                    >
+                        <Zap className="h-4 w-4 text-yellow-400" />
+                        <span>Generate Quiz</span>
+                    </button>
+                    <button 
+                        onClick={() => handleSuggestionClick("Explain this concept like I'm 5 years old.")}
+                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#1e1e1e] hover:bg-[#2c2c2c] border border-white/5 transition-all text-sm text-zinc-300 hover:scale-105 active:scale-95"
+                    >
+                        <Sparkles className="h-4 w-4 text-blue-400" />
+                        <span>Explain Concept</span>
+                    </button>
+                    <button 
+                        onClick={() => handleSuggestionClick("Create 5 flashcards for this material (Front/Back).")}
+                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#1e1e1e] hover:bg-[#2c2c2c] border border-white/5 transition-all text-sm text-zinc-300 hover:scale-105 active:scale-95"
+                    >
+                        <Layers className="h-4 w-4 text-green-400" />
+                        <span>Flashcards</span>
+                    </button>
+                </div>
+             </div>
           ) : (
-            <div className="mx-auto max-w-3xl space-y-6">
+            /* 2. CHAT MESSAGE LIST VIEW */
+            <div className="h-full overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-white/10 mb-20">
+                <div className="mx-auto max-w-3xl space-y-6">
+
               {messages.map((msg, index) => (
                 <div key={index} className="space-y-6 animate-slide-up">
                     {/* User Message */}
@@ -430,60 +522,49 @@ export default function ChatPage() {
               
               <div ref={messagesEndRef} />
             </div>
-          )}
-        </div>
-
-        {/* Input Area */}
-        <div className="bg-[#050505] p-4">
-          <div className="mx-auto max-w-3xl">
-            <form onSubmit={handleSendMessage} className="relative flex items-center">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder={currentChatId ? "Ask anything..." : "Start a new chat to begin..."}
-                disabled={loading}
-                className="w-full rounded-full border border-white/10 bg-zinc-900/50 px-6 py-4 pr-14 text-white placeholder-zinc-500 backdrop-blur-sm focus:border-white/20 focus:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-              />
-              <button
-                type="submit"
-                disabled={loading || (!inputValue.trim() && !currentChatId)}
-                onClick={async () => {
-                    if (!currentChatId && inputValue.trim()) {
-                         const newChatId = await handleCreateChat();
-                         if (newChatId) {
-                             // Let the form submit handler take over, but we need to ensure state is ready?
-                             // Actually, since this is a button type="submit" inside a form, 
-                             // onClick runs, then onSubmit runs.
-                             // But since handleCreateChat is async, onSubmit might run before chatId is set in state.
-                             // So we should handle sending manually here and prevent default form submission in this specific case?
-                             
-                             // Better approach: Let the form onSubmit handle it, but we need to pass the new ID.
-                             // But onSubmit receives the event.
-                             
-                             // Let's just manually trigger send here and prevent default.
-                             handleSendMessage({ preventDefault: () => {} } as any, inputValue, newChatId);
-                         }
-                    }
-                }}
-                className={`absolute right-2 rounded-full p-2.5 text-white transition-all ${
-                    inputValue.trim() 
-                    ? 'bg-white text-black hover:bg-zinc-200' 
-                    : 'bg-transparent text-zinc-500 cursor-not-allowed'
-                }`}
-              >
-                {loading ? (
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-500 border-t-white" />
-                ) : (
-                    <Send className="h-5 w-5" />
-                )}
-              </button>
-            </form>
-            <div className="mt-3 text-center text-xs text-zinc-500">
-               ReadSum can make mistakes. Verify important info.
-            </div>
           </div>
-        </div>
+        )}
+      </div>
+
+        {/* Input Area - SHOW ONLY IF CHAT MSG LIST IS ACTIVE (currentChatId not null) */}
+        {(messages.length > 0 || currentChatId) && (
+            <div className="border-t border-white/5 bg-[#0b0b0b] p-4 sticky bottom-0 z-20">
+                <div className="mx-auto max-w-3xl">
+                    <div className="relative flex items-end gap-2 rounded-[24px] bg-[#1e1e1e] border border-transparent focus-within:border-white/10 p-2 pl-4 transition-colors">
+                            <div className="flex items-center gap-1 self-center pb-1">
+                                <button className="p-2 rounded-full hover:bg-white/10 text-zinc-400 transition-colors">
+                                    <Plus className="h-5 w-5" />
+                                </button>
+                                <button className="p-2 rounded-full hover:bg-white/10 text-zinc-400 transition-colors hidden sm:block">
+                                    <LayoutGrid className="h-5 w-5" />
+                                </button>
+                            </div>
+                            <form
+                                className="flex-1 flex items-center min-h-[50px]"
+                                onSubmit={(e) => handleSendMessage(e)}
+                            >
+                                <input
+                                    type="text"
+                                    value={inputValue}
+                                    onChange={(e) => setInputValue(e.target.value)}
+                                    placeholder="Message current chat..."
+                                    className="w-full bg-transparent border-none px-2 py-3 text-white placeholder-zinc-500 focus:outline-none max-h-32 text-base"
+                                />
+                                <button
+                                    disabled={!inputValue.trim() || loading}
+                                    type="submit" 
+                                    className="p-2 rounded-full text-white hover:bg-white/10 disabled:opacity-50 disabled:hover:bg-transparent transition-colors self-end mb-1"
+                                >
+                                    <Send className="h-5 w-5" />
+                                </button>
+                            </form>
+                    </div>
+                    <div className="mt-2 text-center text-xs text-zinc-500">
+                        Gemini can make mistakes. Verify important info.
+                    </div>
+                </div>
+            </div>
+        )}
       </div>
     </div>
   );

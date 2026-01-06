@@ -8,6 +8,7 @@
   --animate-slide-down: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-scale-in: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-blur-in: blurIn 0.4s ease-out;
+  --transition-smooth: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   
   @keyframes fadeIn {
     from { opacity: 0; }
@@ -66,7 +67,25 @@ body {
 
 /* Custom Utilities for that "Neat" look */
 @layer utilities {
+  .ease-smooth {
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
   .text-balance {
     text-wrap: balance;
+  }
+  
+  .scrollbar-none {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mask-linear-fade {
+    mask-image: linear-gradient(to right, black 90%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
   }
 }

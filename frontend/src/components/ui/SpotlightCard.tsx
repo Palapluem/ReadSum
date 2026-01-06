@@ -2,22 +2,24 @@
 
 import React, { useRef, useState } from 'react';
 
-interface SpotlightCardProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface SpotlightCardProps extends React.HTMLAttributes<HTMLElement> {
   children: React.ReactNode;
   className?: string;
   spotlightColor?: string;
+  as?: React.ElementType;
 }
 
 export const SpotlightCard = ({ 
   children, 
   className = "", 
   spotlightColor = "rgba(255, 255, 255, 0.15)",
+  as: Component = "button",
   ...props 
 }: SpotlightCardProps) => {
-  const divRef = useRef<HTMLButtonElement>(null);
+  const divRef = useRef<HTMLElement>(null);
   const [opacity, setOpacity] = useState(0);
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
     if (!divRef.current) return;
 
     const rect = divRef.current.getBoundingClientRect();
@@ -45,14 +47,14 @@ export const SpotlightCard = ({
   };
 
   return (
-    <button
-      ref={divRef}
+    <Component
+      ref={divRef as any}
       onMouseMove={handleMouseMove}
       onFocus={handleFocus}
       onBlur={handleBlur}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className={`relative overflow-hidden rounded-xl border border-white/10 bg-white/5 text-left transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] ${className}`}
+      className={`relative overflow-hidden rounded-xl border border-white/10 bg-white/5 text-left transition-all duration-300 hover:scale-[1.01] ${className}`}
       {...props}
     >
       <div
@@ -63,6 +65,6 @@ export const SpotlightCard = ({
         }}
       />
       <div className="relative h-full">{children}</div>
-    </button>
+    </Component>
   );
 };
