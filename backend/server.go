@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/MadMax168/Readsum/config"
+	"github.com/MadMax168/Readsum/routes"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
@@ -33,11 +34,13 @@ func main() {
 		AllowCredentials: true,
 	}))
 
+	routes.SetAllRoutes(app)
+
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "3000"
+		port = "8080"
 	}
 
-	log.Println("Server Starting on: 8000")
+	log.Println("Server Starting on: " + port)
 	app.Listen(":" + port)
 }

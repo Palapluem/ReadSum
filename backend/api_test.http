@@ -7,10 +7,9 @@ POST {{baseUrl}}/register
 Content-Type: application/json
 
 {
-    "username": "gemini_tester",
+    "name": "Gemini Tester",
     "email": "tester@example.com",
-    "password": "password123",
-    "full_name": "Gemini Tester"
+    "password": "password123"
 }
 
 ### 2. Login (ล็อกอินเพื่อรับ Token)
