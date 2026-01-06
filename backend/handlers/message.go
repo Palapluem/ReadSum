@@ -6,6 +6,7 @@ import (
 	"github.com/MadMax168/Readsum/config"
 	"github.com/MadMax168/Readsum/customerrors"
 	"github.com/MadMax168/Readsum/models"
+	"github.com/MadMax168/Readsum/services"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -90,7 +91,31 @@ func PostMessage(c *fiber.Ctx) error {
 		return customerrors.NewInternalServerError("Failed to create message")
 	}
 
-	return c.Status(201).JSON(fiber.Map{
+	// AI Process: ถ้าคนส่งคือ User ให้ AI ตอบกลับด้วย
+	var aiResponse *TextResp
+	if message.Role == "user" {
+		aiText, err := services.GenerateContent(message.Text)
+		if err == nil {
+			// บันทึกคำตอบของ AI ลง DB
+			aiMsg := models.Message{
+				Text:   aiText,
+				Role:   "assistant",
+				ChatID: CID,
+			}
+			if err := config.DB.Create(&aiMsg).Error; err == nil {
+				aiResponse = &TextResp{
+					Index:     aiMsg.ID,
+					Role:      aiMsg.Role,
+					Text:      aiMsg.Text,
+					CreatedAt: aiMsg.CreatedAt.Format("2006-01-02 15:04:05"),
+				}
+			}
+		}
+		// Note: ถ้า AI error อาจจะไม่ต้อง return error ให้ user หรือ log ไว้เฉยๆ ก็ได้
+		// แต่ในที่นี้จะปล่อยผ่านไปก่อน ให้ user เห็นแค่ข้อความตัวเอง
+	}
+
+	responseMap := fiber.Map{
 		"success": true,
 		"data": TextResp{
 			Index:     message.ID,
@@ -99,7 +124,14 @@ func PostMessage(c *fiber.Ctx) error {
 			CreatedAt: message.CreatedAt.Format("2006-01-02 15:04:05"),
 		},
 		"message": "Message created successfully",
-	})
+	}
+
+	// ถ้ามี AI Response ให้ส่งกลับไปด้วย (Optional)
+	if aiResponse != nil {
+		responseMap["ai_response"] = aiResponse
+	}
+
+	return c.Status(201).JSON(responseMap)
 }
 
 type UpdMessageInput struct {

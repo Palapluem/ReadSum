@@ -10,9 +10,12 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func server() {
+func main() {
+	// Try loading from root first (../.env), then current directory (.env)
 	if err := godotenv.Load("../.env"); err != nil {
-		log.Println("Not found .env file")
+		if err := godotenv.Load(".env"); err != nil {
+			log.Println("Not found .env file")
+		}
 	}
 
 	config.ConnectDB()

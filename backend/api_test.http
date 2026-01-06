@@ -1,0 +1,62 @@
+### ไฟล์สำหรับการทดสอบ API ด้วย REST Client (หรือใช้เป็นต้นแบบสำหรับ Postman)
+
+@baseUrl = http://localhost:8080
+
+### 1. Register (สมัครสมาชิก)
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+    "username": "gemini_tester",
+    "email": "tester@example.com",
+    "password": "password123",
+    "full_name": "Gemini Tester"
+}
+
+### 2. Login (ล็อกอินเพื่อรับ Token)
+# กด Send Request แล้วก๊อบปี้ "token" ใน Response มาแทนที่คำว่า YOUR_TOKEN_HERE ด้านล่าง
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+    "email": "tester@example.com",
+    "password": "password123"
+}
+
+### ==========================================
+### ⚠️ ตั้งค่า Token และ Chat ID ตรงนี้ก่อนไปต่อ
+@token = YOUR_TOKEN_HERE
+@chatId = YOUR_CHAT_ID_HERE
+### ==========================================
+
+
+### 3. Check Profile (ตรวจสอบว่า Token ใช้ได้ไหม)
+GET {{baseUrl}}/api/v1/users/me
+Authorization: Bearer {{token}}
+
+
+### 4. Create Chat (สร้างห้องแชทใหม่)
+# กด Send แล้วก๊อบปี้ "ID" (เช่น 1, 2) มาใส่ในตัวแปร @chatId ด้านบน
+POST {{baseUrl}}/api/v1/chats
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "title": "คุยเล่นกับ Gemini"
+}
+
+
+### 5. Send Message (คุยกับ AI) 🔥 Highlight!
+POST {{baseUrl}}/api/v1/chats/{{chatId}}/messages
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "text": "สวัสดี Gemini ช่วยเล่าเรื่องตลกให้ฟังหน่อยสิ",
+    "role": "user"
+}
+
+
+### 6. Get Chats (ดูประวัติแชททั้งหมด)
+GET {{baseUrl}}/api/v1/chats/{{chatId}}/messages
+Authorization: Bearer {{token}}
