@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { chatService } from '@/services/chat';
 import { Chat, Request } from '@/types/chat';
 import { Send, Plus, MessageSquare, Trash2, Menu, X, Bot, User } from 'lucide-react';
+import { SpotlightCard } from '@/components/ui/SpotlightCard';
 
 export default function ChatPage() {
   const router = useRouter();
@@ -315,70 +316,77 @@ export default function ChatPage() {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
           {!currentChatId ? (
-            <div className="flex h-full flex-col items-center justify-center space-y-8">
+            <div className="flex h-full flex-col items-center justify-center space-y-8 animate-fade-in">
               <div className="text-center space-y-4">
-                <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-green-400 bg-clip-text text-transparent">
+                <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-green-400 bg-clip-text text-transparent animate-slide-down">
                     Hello, Learner
                 </h2>
-                <p className="text-2xl text-zinc-400 font-light">How can I help you learn today?</p>
+                <p className="text-2xl text-zinc-400 font-light animate-slide-up delay-100">How can I help you learn today?</p>
               </div>
 
               {/* Suggestions Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl px-4">
-                 <button 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl px-4 animate-slide-up delay-200">
+                 <SpotlightCard 
                   onClick={async () => {
                         const newChatId = await handleCreateChat();
                         if (newChatId) {
                            handleSendMessage({ preventDefault: () => {} } as any, "Summarize this article about Quantum Computing", newChatId);
                         }
                   }}
-                  className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all text-left space-y-1 group"
+                  className="p-4"
+                  spotlightColor="rgba(168, 85, 247, 0.2)"
                  >
                     <span className="block text-white font-medium group-hover:text-purple-400 transition-colors">Summarize Article</span>
                     <span className="block text-sm text-zinc-500">Paste a link or text to get a quick summary</span>
-                 </button>
-                 <button 
+                 </SpotlightCard >
+                 
+                 <SpotlightCard 
                    onClick={async () => {
                         const newChatId = await handleCreateChat();
                         if (newChatId) {
                             handleSendMessage({ preventDefault: () => {} } as any, "Explain the concept of Recursion in programming", newChatId);
                         }
                    }}
-                   className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all text-left space-y-1 group"
+                   className="p-4"
+                   spotlightColor="rgba(59, 130, 246, 0.2)"
                  >
                     <span className="block text-white font-medium group-hover:text-blue-400 transition-colors">Explain Concept</span>
                     <span className="block text-sm text-zinc-500">Get clear explanations for complex topics</span>
-                 </button>
-                 <button 
+                 </SpotlightCard>
+
+                 <SpotlightCard 
                    onClick={async () => {
                         const newChatId = await handleCreateChat();
                         if (newChatId) {
                             handleSendMessage({ preventDefault: () => {} } as any, "Create a study plan for learning Python", newChatId);
                         }
                    }}
-                   className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all text-left space-y-1 group"
+                   className="p-4"
+                   spotlightColor="rgba(34, 197, 94, 0.2)"
                  >
                     <span className="block text-white font-medium group-hover:text-green-400 transition-colors">Study Plan</span>
                     <span className="block text-sm text-zinc-500">Generate a structured learning path</span>
-                 </button>
-                 <button 
+                 </SpotlightCard>
+
+                 <SpotlightCard 
                    onClick={async () => {
                         const newChatId = await handleCreateChat();
                         if (newChatId) {
                             handleSendMessage({ preventDefault: () => {} } as any, "Quiz me on World History basics", newChatId);
                         }
                    }}
-                   className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all text-left space-y-1 group"
+                   className="p-4"
+                   spotlightColor="rgba(234, 179, 8, 0.2)"
                  >
                     <span className="block text-white font-medium group-hover:text-yellow-400 transition-colors">Quiz Me</span>
                     <span className="block text-sm text-zinc-500">Test your knowledge with interactive quizzes</span>
-                 </button>
+                 </SpotlightCard>
               </div>
             </div>
           ) : (
             <div className="mx-auto max-w-3xl space-y-6">
               {messages.map((msg, index) => (
-                <div key={index} className="space-y-6">
+                <div key={index} className="space-y-6 animate-slide-up">
                     {/* User Message */}
                     <div className="flex justify-end">
                         <div className="flex max-w-[85%] gap-2 sm:max-w-[75%]">

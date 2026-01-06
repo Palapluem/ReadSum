@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { MouseBackground } from "@/components/ui/MouseBackground";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,6 +23,7 @@ export default function RootLayout({
         className="font-sans antialiased"
         suppressHydrationWarning={true}
       >
+        <MouseBackground />
         {children}
       </body>
     </html>
