@@ -108,7 +108,7 @@ export default function ChatPage() {
     }
   };
 
-  const handleCreateChat = async () => {
+  const handleCreateChat = async (): Promise<number | null> => {
     const token = localStorage.getItem('token');
     if (!token) {
         // Preview Mode
@@ -127,7 +127,7 @@ export default function ChatPage() {
         // Clear messages for the new blank chat
         setMessages([]);
         if (window.innerWidth < 768) setSidebarOpen(false);
-        return;
+        return newId;
     }
 
     try {
@@ -136,8 +136,10 @@ export default function ChatPage() {
       setCurrentChatId(newChat.id);
       setMessages([]); // New chat has no messages
       if (window.innerWidth < 768) setSidebarOpen(false); // Close sidebar on mobile
+      return newChat.id;
     } catch (error) {
       console.error('Failed to create chat', error);
+      return null;
     }
   };
 
@@ -168,13 +170,15 @@ export default function ChatPage() {
     }
   };
 
-  const handleSendMessage = async (e: React.FormEvent | any, forcedContent?: string) => {
+  const handleSendMessage = async (e: React.FormEvent | any, forcedContent?: string, forcedChatId?: number) => {
     if (e && e.preventDefault) e.preventDefault();
     
     // Allow sending if forcedContent is provided (from suggestion buttons) even if inputValue is empty
     const content = forcedContent || inputValue;
+    // Determine the active chat ID, preferring the forced one if available
+    const activeChatId = forcedChatId || currentChatId;
     
-    if (!content.trim() || !currentChatId) return;
+    if (!content.trim() || !activeChatId) return;
 
     if (!forcedContent) setInputValue('');
     setLoading(true);
@@ -184,7 +188,7 @@ export default function ChatPage() {
         id: Date.now(), // Temporary ID
         request: content,
         response: '',
-        chat_id: currentChatId,
+        chat_id: activeChatId,
         CreatedAt: new Date().toISOString()
     };
     
@@ -207,10 +211,10 @@ export default function ChatPage() {
 
     try {
       // Send to backend
-      await chatService.sendMessage(currentChatId, content);
+      await chatService.sendMessage(activeChatId, content);
       
       // Refresh messages to get the AI response and proper DB IDs
-      await fetchMessages(currentChatId);
+      await fetchMessages(activeChatId);
     } catch (error) {
       console.error('Failed to send message', error);
       // Remove the optimistic message or show error
@@ -322,10 +326,11 @@ export default function ChatPage() {
               {/* Suggestions Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl px-4">
                  <button 
-                  onClick={() => {
-                        handleCreateChat().then(() => {
-                           handleSendMessage({ preventDefault: () => {} } as any, "Summarize this article about Quantum Computing");
-                        });
+                  onClick={async () => {
+                        const newChatId = await handleCreateChat();
+                        if (newChatId) {
+                           handleSendMessage({ preventDefault: () => {} } as any, "Summarize this article about Quantum Computing", newChatId);
+                        }
                   }}
                   className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all text-left space-y-1 group"
                  >
@@ -333,10 +338,11 @@ export default function ChatPage() {
                     <span className="block text-sm text-zinc-500">Paste a link or text to get a quick summary</span>
                  </button>
                  <button 
-                   onClick={() => {
-                        handleCreateChat().then(() => {
-                            handleSendMessage({ preventDefault: () => {} } as any, "Explain the concept of Recursion in programming");
-                        });
+                   onClick={async () => {
+                        const newChatId = await handleCreateChat();
+                        if (newChatId) {
+                            handleSendMessage({ preventDefault: () => {} } as any, "Explain the concept of Recursion in programming", newChatId);
+                        }
                    }}
                    className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all text-left space-y-1 group"
                  >
@@ -344,10 +350,11 @@ export default function ChatPage() {
                     <span className="block text-sm text-zinc-500">Get clear explanations for complex topics</span>
                  </button>
                  <button 
-                   onClick={() => {
-                        handleCreateChat().then(() => {
-                            handleSendMessage({ preventDefault: () => {} } as any, "Create a study plan for learning Python");
-                        });
+                   onClick={async () => {
+                        const newChatId = await handleCreateChat();
+                        if (newChatId) {
+                            handleSendMessage({ preventDefault: () => {} } as any, "Create a study plan for learning Python", newChatId);
+                        }
                    }}
                    className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all text-left space-y-1 group"
                  >
@@ -355,10 +362,11 @@ export default function ChatPage() {
                     <span className="block text-sm text-zinc-500">Generate a structured learning path</span>
                  </button>
                  <button 
-                   onClick={() => {
-                        handleCreateChat().then(() => {
-                            handleSendMessage({ preventDefault: () => {} } as any, "Quiz me on World History basics");
-                        });
+                   onClick={async () => {
+                        const newChatId = await handleCreateChat();
+                        if (newChatId) {
+                            handleSendMessage({ preventDefault: () => {} } as any, "Quiz me on World History basics", newChatId);
+                        }
                    }}
                    className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all text-left space-y-1 group"
                  >
@@ -432,15 +440,22 @@ export default function ChatPage() {
               <button
                 type="submit"
                 disabled={loading || (!inputValue.trim() && !currentChatId)}
-                onClick={() => {
-                    if (!currentChatId) {
-                         handleCreateChat().then(() => {
-                             // Wait a bit for state update then send ? 
-                             // Logic here is tricky because setState is async.
-                             // Better to let user create chat first or auto-create on send (complex).
-                             // For now, let's keep it simple: Button disabled if no chat, 
-                             // UNLESS we want to auto-create.
-                         })
+                onClick={async () => {
+                    if (!currentChatId && inputValue.trim()) {
+                         const newChatId = await handleCreateChat();
+                         if (newChatId) {
+                             // Let the form submit handler take over, but we need to ensure state is ready?
+                             // Actually, since this is a button type="submit" inside a form, 
+                             // onClick runs, then onSubmit runs.
+                             // But since handleCreateChat is async, onSubmit might run before chatId is set in state.
+                             // So we should handle sending manually here and prevent default form submission in this specific case?
+                             
+                             // Better approach: Let the form onSubmit handle it, but we need to pass the new ID.
+                             // But onSubmit receives the event.
+                             
+                             // Let's just manually trigger send here and prevent default.
+                             handleSendMessage({ preventDefault: () => {} } as any, inputValue, newChatId);
+                         }
                     }
                 }}
                 className={`absolute right-2 rounded-full p-2.5 text-white transition-all ${
